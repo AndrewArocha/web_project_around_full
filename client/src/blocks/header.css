@@ -2,6 +2,7 @@
   min-height: 120px;
   font-family: "Inter", Arial, sans-serif;
   display: flex;
+  justify-content: space-between; /* Empuja el logo a la izq y el nav a la der */
   align-items: center;
   border-bottom: 1px solid rgba(84, 84, 84, 0.7);
 }
@@ -12,6 +13,37 @@
   object-fit: contain;
 }
 
+/* --- NUEVOS ESTILOS DE NAVEGACIÓN --- */
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header__link,
+.header__email {
+  font-size: 18px;
+  line-height: 22px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.header__signout {
+  font-size: 18px;
+  line-height: 22px;
+  color: #A9A9A9;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.header__signout:hover,
+.header__link:hover {
+  opacity: 0.8;
+}
+
+/* --- RESPONSIVE MOBILES --- */
 @media screen and (max-width: 544px) {
   .header {
     min-height: 85px;
@@ -21,5 +53,18 @@
     width: 126px;
     height: 24px;
     margin: 0 0 0 7px;
+  }
+
+  /* Ajustes para que los enlaces quepan bien en móvil */
+  .header__nav {
+    gap: 12px;
+    margin-right: 7px;
+  }
+
+  .header__link,
+  .header__email,
+  .header__signout {
+    font-size: 14px; 
+    line-height: 17px;
   }
 }

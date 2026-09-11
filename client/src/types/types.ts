@@ -22,6 +22,7 @@ export interface UserData {
   name: string;
   about: string;
   avatar: string;
+  email: string;
 }
 
 export interface CurrentUserContextType {
@@ -29,4 +30,10 @@ export interface CurrentUserContextType {
   handleUpdateUser: (userData: { name: string; about: string }) => void;
   handleUpdateAvatar: (userData: { avatar: string }) => void;
   handleAddPlaceSubmit: (cardData: CardFormData) => void;
+  handleOpenPopup: (popupConfig: PopupConfig) => void;
+  handleClosePopup: () => void;
+  popup: PopupConfig | null;
+  handleLogin: (password: string, email: string) => void;
+  handleRegister: (password: string, email: string) => void;
+  handleSignOut: () => void;
 }

@@ -24,7 +24,7 @@ app.use(express.json());
 // Temp auth with POSTMAN user
 app.use((req, res, next) => {
   req.user = {
-    _id: "6a882243b5291096ba30acee",
+    _id: "6aa45dc6eaa9cbf8f32cd147",
   };
   next();
 });

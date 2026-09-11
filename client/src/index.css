@@ -6,10 +6,12 @@
 @import url("../src/blocks/cards.css");
 @import url("../src/blocks/card.css");
 @import url("../src/blocks/popup.css");
+@import url("../src/blocks/auth.css");
 
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 #root {
@@ -17,5 +19,6 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
