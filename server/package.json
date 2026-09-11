@@ -24,6 +24,7 @@
   "homepage": "https://github.com/AndrewArocha/web_project_around_express#readme",
   "dependencies": {
     "express": "^5.2.1",
+    "cors": "^2.8.6",
     "mongoose": "^9.9.3"
   },
   "devDependencies": {
@@ -31,7 +32,6 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
-    "cors": "^2.8.6",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
