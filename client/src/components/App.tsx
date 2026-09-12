@@ -24,6 +24,8 @@ function App(): React.JSX.Element {
   const [popup, setPopup] = useState<PopupConfig | null>(null);
   const [isInfoTooltipOpen, setIsInfoTooltipOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isCheckingToken, setIsCheckingToken] = useState(true);
+  const [userEmail, setUserEmail] = useState('');
   
   // Estado de autenticación
   const [loggedIn, setLoggedIn] = useState(false);
@@ -37,12 +39,20 @@ function App(): React.JSX.Element {
         .then((res) => {
           if (res) {
             setLoggedIn(true);
-            navigate('/');
+            setUserEmail(res.email); 
           }
         })
-        .catch(console.error);
+        .catch((err) => {
+          console.error(err);
+          localStorage.removeItem('jwt');
+        })
+        .finally(() => {
+          setIsCheckingToken(false);
+        });
+    } else {
+      setIsCheckingToken(false);
     }
-  }, [navigate]);
+  }, []);
 
   // Carga inicial de datos de la API local
   useEffect(() => {
@@ -62,12 +72,13 @@ function App(): React.JSX.Element {
 
   // --- Funciones de Autenticación ---
 
-const handleLogin = async (password: string, email: string) => {
+  const handleLogin = async (password: string, email: string) => {
     try {
       const data = await auth.login(password, email);
       if (data.token) {
         localStorage.setItem('jwt', data.token);
         setLoggedIn(true);
+        setUserEmail(email);
         navigate('/');
       }
     } catch (error) {
@@ -92,6 +103,7 @@ const handleLogin = async (password: string, email: string) => {
   const handleSignOut = () => {
     localStorage.removeItem('jwt');
     setLoggedIn(false);
+    setUserEmail('');
     navigate('/signin');
   };
 
@@ -101,14 +113,13 @@ const handleLogin = async (password: string, email: string) => {
     setPopup(popupConfig);
   }
 
-function handleClosePopup() {
+  function handleClosePopup() {
     setPopup(null);
     setIsInfoTooltipOpen(false);
     
     if (isInfoTooltipOpen && isSuccess) {
       navigate('/signin');
     }
-    
   }
 
   const handleUpdateUser = async (userData: { name: string; about: string }) => {
@@ -162,13 +173,22 @@ function handleClosePopup() {
     }
   };
 
+  // Bloqueo de renderizado mientras se comprueba el token para evitar el parpadeo
+  if (isCheckingToken) {
+    return (
+      <div className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#fff' }}>
+        <p>Cargando sesión...</p>
+      </div>
+    );
+  }
+
   return (
     <CurrentUserContext.Provider value={{ currentUser, handleUpdateUser, handleUpdateAvatar, handleAddPlaceSubmit, handleOpenPopup, handleClosePopup, popup, handleLogin, handleRegister, handleSignOut }}>
       <div className="page">
         <div className="page__content">
           <Header
             loggedIn={loggedIn}
-            userEmail={currentUser?.email ?? ''}
+            userEmail={userEmail}
             onSignOut={handleSignOut}
           />
 

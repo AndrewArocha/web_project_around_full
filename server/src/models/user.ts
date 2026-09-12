@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema({
       message: "El formato del enlace del avatar es inválido",
     },
   },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true, select: false },
 });
 
 export default mongoose.model("User", userSchema);

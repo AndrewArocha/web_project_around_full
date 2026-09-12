@@ -16,10 +16,8 @@ class Api {
 
   // Método privado para construir los headers con el token de auth
   private _getHeaders(): Record<string, string> {
-    const token = localStorage.getItem('jwt');
     return {
       ...this._defaultHeaders,
-      ...(token ? { authorization: `Bearer ${token}` } : {})
     };
   }
 
