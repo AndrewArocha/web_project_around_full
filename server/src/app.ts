@@ -2,12 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit'; 
+import rateLimit from 'express-rate-limit';
 
 import Router from './routes/index.js';
 import { createUser, login } from './controllers/users.js';
 import auth from './middleware/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
+
+// Fix de node DNS (Algunas veces Node no puede resolver correctamente los dominios de MongoDB Atlas en Windows)
+
+import dns from 'node:dns';
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 // Carga las variables de entorno del archivo .env
 dotenv.config();
@@ -48,7 +53,7 @@ const signupLimiter = rateLimit({
 });
 
 // ==========================================
-// RUTAS TEST 
+// RUTAS TEST
 // ==========================================
 
 app.get('/crash-test', () => {

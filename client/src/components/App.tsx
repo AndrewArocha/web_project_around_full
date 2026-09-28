@@ -31,7 +31,7 @@ function App(): React.JSX.Element {
   const [loggedIn, setLoggedIn] = useState(false);
   const navigate = useNavigate();
   
-  // Validar token persistente al recargar la aplicación
+  // 1. Validar token persistente al recargar la aplicación
   useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (token) {
@@ -50,35 +50,41 @@ function App(): React.JSX.Element {
           setIsCheckingToken(false);
         });
     } else {
-      setIsCheckingToken(false);
+      // Fix para el linter: Evita el cascading render
+      setTimeout(() => setIsCheckingToken(false), 0);
     }
   }, []);
 
-  // Carga inicial de datos de la API local
+  // 2. Carga inicial de datos SOLO cuando el usuario está logueado
   useEffect(() => {
-    (async () => {
-      try {
-        const [userData, initialCards] = await Promise.all([
-          api.getUserInfo(),
-          api.getInitialCards()
-        ]);
-        setCurrentUser(userData);
-        setCards(initialCards);
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      }
-    })();
-  }, []);
+    if (loggedIn) {
+      (async () => {
+        try {
+          const [userData, initialCards] = await Promise.all([
+            api.getUserInfo(),
+            api.getInitialCards()
+          ]);
+          setCurrentUser(userData);
+          setCards(initialCards);
+        } catch (error) {
+          console.error("Error fetching initial data:", error);
+        }
+      })();
+    }
+  }, [loggedIn]); // <-- Dependencia clave
 
   // --- Funciones de Autenticación ---
 
-  const handleLogin = async (password: string, email: string) => {
+const handleLogin = async (password: string, email: string) => {
     try {
       const data = await auth.login(password, email);
       if (data.token) {
         localStorage.setItem('jwt', data.token);
         setLoggedIn(true);
-        setUserEmail(email);
+        
+        // Usamos directamente el parámetro 'email' del formulario
+        setUserEmail(email); 
+        
         navigate('/');
       }
     } catch (error) {
@@ -104,6 +110,8 @@ function App(): React.JSX.Element {
     localStorage.removeItem('jwt');
     setLoggedIn(false);
     setUserEmail('');
+    setCurrentUser(null); // 3. Limpiamos el perfil por seguridad
+    setCards([]);         // Limpiamos las tarjetas de la memoria
     navigate('/signin');
   };
 
@@ -173,7 +181,7 @@ function App(): React.JSX.Element {
     }
   };
 
-  // Bloqueo de renderizado mientras se comprueba el token para evitar el parpadeo
+  // Bloqueo de renderizado mientras se comprueba el token
   if (isCheckingToken) {
     return (
       <div className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#fff' }}>
@@ -193,7 +201,6 @@ function App(): React.JSX.Element {
           />
 
           <Routes>
-            {/* Ruta Protegida: El núcleo de tu app */}
             <Route 
               path="/" 
               element={
@@ -210,7 +217,6 @@ function App(): React.JSX.Element {
               } 
             />
 
-            {/* Rutas Públicas */}
             <Route 
               path="/signin" 
               element={
@@ -225,7 +231,6 @@ function App(): React.JSX.Element {
               } 
             />
 
-            {/* Captura de rutas inexistentes */}
             <Route 
               path="*" 
               element={

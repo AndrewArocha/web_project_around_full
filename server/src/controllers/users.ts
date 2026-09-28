@@ -5,6 +5,7 @@ import User from '../models/user.js'
 import bcrypt from 'bcryptjs';
 import type { NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import Card from '../models/card.js'
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -24,8 +25,8 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       return next(Object.assign(new Error("User ID not found."), { statusCode: 404 }));
     }
     res.send(user);
-  } catch (error: any) {
-    if (error.name === 'CastError') {
+  } catch (error:unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
       return next(Object.assign(new Error('Formato de ID inválido'), { statusCode: 400 }));
     }
     next(error);
@@ -41,7 +42,7 @@ export const getCurrentUser = async (req: Request, res: Response, next: NextFunc
     // Mongoose returns the full user object, including the email, because this is the owner of the profile. Other users won't see the email.
     res.send({
       _id: user._id,
-      email: user.email,  
+      email: user.email,
       name: user.name,
       about: user.about,
       avatar: user.avatar
@@ -111,12 +112,20 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ 
-      email, 
-      password: hashedPassword, 
-      name, 
-      about, 
-      avatar 
+    const user = await User.create({
+      email,
+      password: hashedPassword,
+      name,
+      about,
+      avatar
+    });
+
+    // Inyección de la tarjeta de bienvenida vinculada al nuevo usuario
+    await Card.create({
+      name: '¡Bienvenido a Around!',
+      link: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=800&q=80',
+      owner: user._id,
+      likes: []
     });
 
     res.status(201).send({
@@ -127,13 +136,14 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       avatar: user.avatar
     });
 
-  } catch (error: any) {
-    if (error.code === 11000) {
-      return res.status(409).send({ message: "El correo electrónico ya está registrado" });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
+      return res.status(400).send({ message: "ID de usuario inválido" });
     }
     next(error);
   }
 };
+
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
