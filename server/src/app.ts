@@ -98,3 +98,5 @@ if (process.env.NODE_ENV !== 'production') {
     console.info(`App listening on port ${PORT}`);
   });
 }
+
+export default app;
