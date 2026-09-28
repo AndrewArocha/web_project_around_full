@@ -1,31 +1,42 @@
 //Controller for cards in src/controllers/cards.ts
 
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
 import Card from '../models/card.js'
 
-export const getCards = async (req: Request, res: Response) => {
-  // Logic to get cards from the database
-  const cards = await Card.find({});
-  const userId = req.user?._id;
+export const getCards = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?._id;
 
-  const cardsWithIsLiked = cards.map((card) => ({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  }));
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return next(Object.assign(new Error("A valid user ID is required"), {
+        statusCode: 401,
+      }));
+    }
+    const cards = await Card.find({ owner: userId }).sort({ createdAt: -1 });
 
-  res.send(cardsWithIsLiked);
-}
+    // Casteamos 'card' a (Document & { ... }) para que TypeScript sepa
+    // con certeza que el método toObject() existe en este contexto.
+    const cardsWithIsLiked = cards.map((card: any) => ({
+      ...card.toObject(),
+      isLiked: card.likes.some((id: any) => id.toString() === userId),
+    }));
 
-export const createCard = async (req: Request, res: Response) => {
+    res.send(cardsWithIsLiked);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createCard = async (req: Request, res: Response, next: NextFunction) => {
   // Logic to create a new card in the database
   const { name, link } = req.body;
   const userId = req.user?._id;
 
   if (!userId || !Types.ObjectId.isValid(userId)) {
-    throw Object.assign(new Error('Invalid user ID'), {
+    return next(Object.assign(new Error('Invalid user ID'), {
       statusCode: 401,
-    });
+    }));
   }
 
   const card = await Card.create({
@@ -40,15 +51,42 @@ export const createCard = async (req: Request, res: Response) => {
   });
 };
 
-export const deleteCard = async (req: Request, res: Response) => {
-  // Delete any card
-  const card = await Card.findByIdAndDelete(req.params.id);
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), {
-      statusCode: 404,
-    });
+export const deleteCard = async (req: Request, res: Response, next: NextFunction) => {
+  // delete any card, but only if the user is the owner of that card
+  try {
+    const cardId = req.params.id;
+    const userId = req.user?._id;
+
+    // 1. Buscamos la tarjeta
+    const card = await Card.findById(cardId);
+    
+    // Si no existe, lanzamos el error 404
+    if (!card) {
+      return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), {
+        statusCode: 404,
+      }));
+    }
+
+    // 2. Comprobamos la propiedad
+    // card.owner es un ObjectId, userId (req.user._id) viene del token JWT
+    if (card.owner.toString() !== userId) {
+      return next(Object.assign(new Error("No tienes autorización para borrar esta tarjeta"), {
+        statusCode: 403,
+      }));
+    }
+
+    // 3. Si todo está bien, la borramos
+    await Card.findByIdAndDelete(cardId);
+    
+    res.send({ message: "Tarjeta eliminada con éxito" });
+
+  } catch (error: any) {
+    // Manejo de IDs mal formados
+    if (error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
   }
-  res.send({ message: "Tarjeta eliminada con éxito" });
 };
 
 export const likeCard = async (req: Request, res: Response) => {
