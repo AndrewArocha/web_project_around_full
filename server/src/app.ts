@@ -92,7 +92,9 @@ app.use((req, res, next) => {
 // Error handler middleware
 app.use(errorHandler);
 
-// Mount
-app.listen(PORT, () => {
-  console.info(`App listening on port ${PORT}`);
-});
+// Mount the server only if not in test mode (Local)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.info(`App listening on port ${PORT}`);
+  });
+}
