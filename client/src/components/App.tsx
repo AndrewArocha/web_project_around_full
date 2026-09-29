@@ -25,22 +25,23 @@ function App(): React.JSX.Element {
   const [isInfoTooltipOpen, setIsInfoTooltipOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
   
   // Estado de autenticación
   const [loggedIn, setLoggedIn] = useState(false);
   const navigate = useNavigate();
   
-  // 1. Validar token persistente al recargar la aplicación
+  // Validación del token y la carga de datos (antes en dos useEffect)
   useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (token) {
-      auth.checkToken(token)
-        .then((res) => {
-          if (res) {
-            setLoggedIn(true);
-            setUserEmail(res.email); 
-          }
+      Promise.all([
+        api.getUserInfo(),
+        api.getInitialCards()
+      ])
+        .then(([userData, initialCards]) => {
+          setCurrentUser(userData);
+          setCards(initialCards);
+          setLoggedIn(true);
         })
         .catch((err) => {
           console.error(err);
@@ -55,35 +56,23 @@ function App(): React.JSX.Element {
     }
   }, []);
 
-  // 2. Carga inicial de datos SOLO cuando el usuario está logueado
-  useEffect(() => {
-    if (loggedIn) {
-      (async () => {
-        try {
-          const [userData, initialCards] = await Promise.all([
-            api.getUserInfo(),
-            api.getInitialCards()
-          ]);
-          setCurrentUser(userData);
-          setCards(initialCards);
-        } catch (error) {
-          console.error("Error fetching initial data:", error);
-        }
-      })();
-    }
-  }, [loggedIn]); // <-- Dependencia clave
-
   // --- Funciones de Autenticación ---
 
-const handleLogin = async (password: string, email: string) => {
+  const handleLogin = async (password: string, email: string) => {
     try {
       const data = await auth.login(password, email);
       if (data.token) {
         localStorage.setItem('jwt', data.token);
-        setLoggedIn(true);
         
-        // Usamos directamente el parámetro 'email' del formulario
-        setUserEmail(email); 
+        // Cargamos los datos del usuario inmediatamente tras un login exitoso.
+        const [userData, initialCards] = await Promise.all([
+          api.getUserInfo(),
+          api.getInitialCards()
+        ]);
+        
+        setCurrentUser(userData);
+        setCards(initialCards);
+        setLoggedIn(true);
         
         navigate('/');
       }
@@ -109,8 +98,7 @@ const handleLogin = async (password: string, email: string) => {
   const handleSignOut = () => {
     localStorage.removeItem('jwt');
     setLoggedIn(false);
-    setUserEmail('');
-    setCurrentUser(null); // 3. Limpiamos el perfil por seguridad
+    setCurrentUser(null); // Limpiamos el perfil por seguridad
     setCards([]);         // Limpiamos las tarjetas de la memoria
     navigate('/signin');
   };
@@ -196,7 +184,7 @@ const handleLogin = async (password: string, email: string) => {
         <div className="page__content">
           <Header
             loggedIn={loggedIn}
-            userEmail={userEmail}
+            userEmail={currentUser?.email || ''} // Leemos el correo del objeto currentUser para no tener estados duplicados
             onSignOut={handleSignOut}
           />
 

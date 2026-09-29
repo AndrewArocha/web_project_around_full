@@ -89,40 +89,57 @@ export const deleteCard = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const likeCard = async (req: Request, res: Response) => {
-  // Get those likes up
-  const card = await Card.findByIdAndUpdate(
-    req.params.id,
-    { $addToSet: { likes: req.user?._id } },
-    { new: true }
-  );
-  // Slight fallback just in case an error pops up when liking a deleted card that hasn't updated
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
-  }
+export const likeCard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get those likes up
+    const card = await Card.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { likes: req.user?._id } },
+      { new: true }
+    );
 
-  const userId = req.user?._id;
-  res.send({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  });
+    // Slight fallback just in case an error pops up when liking a deleted card that hasn't updated
+    if (!card) {
+      // CAMBIO: Cambiamos 'throw' por 'return next()' para que el manejador de errores responda 404 sin tumbar el servidor
+      return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 }));
+    }
+
+    const userId = req.user?._id;
+    res.send({
+      ...card.toObject(),
+      isLiked: card.likes.some((id) => id.toString() === userId),
+    });
+  } catch (error: unknown) {
+    // CAMBIO: Manejo del CastError para IDs con formato inválido (requisito de las pruebas)
+    if (error instanceof Error && error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
+  }
 };
 
-export const unlikeCard = async (req: Request, res: Response) => {
-  // Remove the like from the card
-  const card = await Card.findByIdAndUpdate(
-    req.params.id,
-    { $pull: { likes: req.user?._id } },
-    { new: true }
-  );
+export const unlikeCard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Remove the like from the card
+    const card = await Card.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { likes: req.user?._id } },
+      { new: true }
+    );
 
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
+    if (!card) {
+      return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 }));
+    }
+
+    const userId = req.user?._id;
+    res.send({
+      ...card.toObject(),
+      isLiked: card.likes.some((id) => id.toString() === userId),
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
   }
-
-  const userId = req.user?._id;
-  res.send({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  });
 };

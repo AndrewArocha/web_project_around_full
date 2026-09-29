@@ -9,9 +9,17 @@ import Card from '../models/card.js'
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // We hide the '-email'
-    const users = await User.find({}).select('-email');
-    res.send(users);
+    const users = await User.find({});
+
+    // Map the array to only include the fields we want to expose
+    const formattedUsers = users.map(user => ({
+      _id: user._id,
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar
+    }));
+
+    res.send(formattedUsers);
   } catch (error) {
     next(error);
   }
@@ -19,13 +27,20 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
 
 export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // We also hide the email when viewing someone else's profile
-    const user = await User.findById(req.params.id).select('-email');
-    if (!user) {
+   const user = await User.findById(req.params.id);
+
+if (!user) {
       return next(Object.assign(new Error("User ID not found."), { statusCode: 404 }));
     }
-    res.send(user);
-  } catch (error:unknown) {
+    // We also hide the email when viewing someone else's profile (by mapping only the fields we want to expose)
+res.send({
+      _id: user._id,
+      name: user.name,
+      about: user.about,
+      avatar: user.avatar
+    });
+  } catch (error: unknown) {
+    // Error block for wrong ID format
     if (error instanceof Error && error.name === 'CastError') {
       return next(Object.assign(new Error('Formato de ID inválido'), { statusCode: 400 }));
     }
@@ -137,6 +152,9 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     });
 
   } catch (error: unknown) {
+if (typeof error === 'object' && error !== null && 'code' in error && (error as { code?: number }).code === 11000) {
+      return res.status(409).send({ message: "Este correo electrónico ya está registrado" });
+    }
     if (error instanceof Error && error.name === 'CastError') {
       return res.status(400).send({ message: "ID de usuario inválido" });
     }

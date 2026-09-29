@@ -56,12 +56,6 @@ const signupLimiter = rateLimit({
 // RUTAS TEST
 // ==========================================
 
-app.get('/crash-test', () => {
-  setTimeout(() => {
-    throw new Error('El servidor va a caer');
-  }, 0);
-});
-
 app.get('/health', (req, res) => {
   res.status(200).send({ status: 'ok' });
 });
