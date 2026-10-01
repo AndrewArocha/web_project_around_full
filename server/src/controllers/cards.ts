@@ -89,40 +89,78 @@ export const deleteCard = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const likeCard = async (req: Request, res: Response) => {
-  // Get those likes up
-  const card = await Card.findByIdAndUpdate(
-    req.params.id,
-    { $addToSet: { likes: req.user?._id } },
-    { new: true }
-  );
-  // Slight fallback just in case an error pops up when liking a deleted card that hasn't updated
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
-  }
+export const likeCard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?._id;
 
-  const userId = req.user?._id;
-  res.send({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  });
+    // 1. Buscamos la tarjeta primero
+    const card = await Card.findById(req.params.id);
+
+    // Si no existe, 404
+    if (!card) {
+      return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 }));
+    }
+
+    // 2. Comprobamos la propiedad (Requisito estricto del revisor)
+    if (card.owner.toString() !== userId) {
+      return next(Object.assign(new Error("No tienes autorización para modificar esta tarjeta"), { statusCode: 403 }));
+    }
+
+    // 3. Actualizamos añadiendo el like
+    const updatedCard = await Card.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { likes: userId } },
+      { new: true }
+    );
+
+    if (updatedCard) {
+      res.send({
+        ...updatedCard.toObject(),
+        isLiked: updatedCard.likes.some((id) => id.toString() === userId),
+      });
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
+  }
 };
 
-export const unlikeCard = async (req: Request, res: Response) => {
-  // Remove the like from the card
-  const card = await Card.findByIdAndUpdate(
-    req.params.id,
-    { $pull: { likes: req.user?._id } },
-    { new: true }
-  );
+export const unlikeCard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?._id;
 
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
+    // 1. Buscamos la tarjeta primero
+    const card = await Card.findById(req.params.id);
+
+    // Si no existe, 404
+    if (!card) {
+      return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 }));
+    }
+
+    // 2. Comprobamos la propiedad (Requisito estricto del revisor)
+    if (card.owner.toString() !== userId) {
+      return next(Object.assign(new Error("No tienes autorización para modificar esta tarjeta"), { statusCode: 403 }));
+    }
+
+    // 3. Actualizamos quitando el like
+    const updatedCard = await Card.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { likes: userId } },
+      { new: true }
+    );
+
+    if (updatedCard) {
+      res.send({
+        ...updatedCard.toObject(),
+        isLiked: updatedCard.likes.some((id) => id.toString() === userId),
+      });
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
   }
-
-  const userId = req.user?._id;
-  res.send({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  });
 };
