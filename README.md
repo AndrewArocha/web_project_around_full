@@ -27,6 +27,14 @@ In this integrated phase, the application combines a modern **React** front-end 
 
 ---
 
+## 🌐 Deployment
+
+* **Frontend:** [https://web-project-around-full-v56n.vercel.app](https://web-project-around-full-v56n.vercel.app)
+* **Backend:** [https://web-project-around-full-rosy.vercel.app](https://web-project-around-full-rosy.vercel.app)
+
+
+---
+
 ## 🚀 Running the Project Locally
 
 To run both halves of the project simultaneously on your machine, follow these steps:

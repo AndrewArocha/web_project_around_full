@@ -1,7 +1,7 @@
 //Controller for cards in src/controllers/cards.ts
 
 import type { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
+import { Types, Document } from 'mongoose';
 import Card from '../models/card.js'
 
 export const getCards = async (req: Request, res: Response, next: NextFunction) => {
@@ -17,10 +17,10 @@ export const getCards = async (req: Request, res: Response, next: NextFunction) 
 
     // Casteamos 'card' a (Document & { ... }) para que TypeScript sepa
     // con certeza que el método toObject() existe en este contexto.
-    const cardsWithIsLiked = cards.map((card: any) => ({
-      ...card.toObject(),
-      isLiked: card.likes.some((id: any) => id.toString() === userId),
-    }));
+const cardsWithIsLiked = cards.map((card: Document & { likes: Types.ObjectId[] }) => ({
+  ...card.toObject(),
+  isLiked: card.likes.some((id: Types.ObjectId) => id.toString() === userId),
+}));
 
     res.send(cardsWithIsLiked);
   } catch (error) {
@@ -59,7 +59,7 @@ export const deleteCard = async (req: Request, res: Response, next: NextFunction
 
     // 1. Buscamos la tarjeta
     const card = await Card.findById(cardId);
-    
+
     // Si no existe, lanzamos el error 404
     if (!card) {
       return next(Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), {
@@ -77,12 +77,12 @@ export const deleteCard = async (req: Request, res: Response, next: NextFunction
 
     // 3. Si todo está bien, la borramos
     await Card.findByIdAndDelete(cardId);
-    
+
     res.send({ message: "Tarjeta eliminada con éxito" });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Manejo de IDs mal formados
-    if (error.name === 'CastError') {
+    if (error instanceof Error && error.name === 'CastError') {
       return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
     }
     next(error);
@@ -151,16 +151,13 @@ export const unlikeCard = async (req: Request, res: Response, next: NextFunction
       { new: true }
     );
 
-    if (updatedCard) {
-      res.send({
-        ...updatedCard.toObject(),
-        isLiked: updatedCard.likes.some((id) => id.toString() === userId),
-      });
-    }
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'CastError') {
-      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
-    }
-    next(error);
+  if (!card) {
+    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
   }
+
+  const userId = req.user?._id;
+  res.send({
+    ...card.toObject(),
+    isLiked: card.likes.some((id) => id.toString() === userId),
+  });
 };

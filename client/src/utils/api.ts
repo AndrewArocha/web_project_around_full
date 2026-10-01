@@ -14,11 +14,16 @@ class Api {
     this._defaultHeaders = options.headers;
   }
 
-  // Método privado para construir los headers con el token de auth
+  // Método privado actualizado para inyectar el token dinámicamente
   private _getHeaders(): Record<string, string> {
-    return {
-      ...this._defaultHeaders,
-    };
+    const token = localStorage.getItem('jwt');
+    const headers = { ...this._defaultHeaders };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   }
 
   private async _checkResponse<T>(res: Response): Promise<T> {
@@ -94,8 +99,9 @@ class Api {
   }
 }
 
+// Actualizada la baseUrl para leer desde Vite
 const api = new Api({
-  baseUrl: "http://localhost:3001",
+  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:3001",
   headers: {
     "Content-Type": "application/json"
   }

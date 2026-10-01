@@ -25,22 +25,23 @@ function App(): React.JSX.Element {
   const [isInfoTooltipOpen, setIsInfoTooltipOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
   
   // Estado de autenticación
   const [loggedIn, setLoggedIn] = useState(false);
   const navigate = useNavigate();
   
-  // Validar token persistente al recargar la aplicación
+  // Validación del token y la carga de datos (antes en dos useEffect)
   useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (token) {
-      auth.checkToken(token)
-        .then((res) => {
-          if (res) {
-            setLoggedIn(true);
-            setUserEmail(res.email); 
-          }
+      Promise.all([
+        api.getUserInfo(),
+        api.getInitialCards()
+      ])
+        .then(([userData, initialCards]) => {
+          setCurrentUser(userData);
+          setCards(initialCards);
+          setLoggedIn(true);
         })
         .catch((err) => {
           console.error(err);
@@ -50,24 +51,9 @@ function App(): React.JSX.Element {
           setIsCheckingToken(false);
         });
     } else {
-      setIsCheckingToken(false);
+      // Fix para el linter: Evita el cascading render
+      setTimeout(() => setIsCheckingToken(false), 0);
     }
-  }, []);
-
-  // Carga inicial de datos de la API local
-  useEffect(() => {
-    (async () => {
-      try {
-        const [userData, initialCards] = await Promise.all([
-          api.getUserInfo(),
-          api.getInitialCards()
-        ]);
-        setCurrentUser(userData);
-        setCards(initialCards);
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      }
-    })();
   }, []);
 
   // --- Funciones de Autenticación ---
@@ -77,8 +63,17 @@ function App(): React.JSX.Element {
       const data = await auth.login(password, email);
       if (data.token) {
         localStorage.setItem('jwt', data.token);
+        
+        // Cargamos los datos del usuario inmediatamente tras un login exitoso.
+        const [userData, initialCards] = await Promise.all([
+          api.getUserInfo(),
+          api.getInitialCards()
+        ]);
+        
+        setCurrentUser(userData);
+        setCards(initialCards);
         setLoggedIn(true);
-        setUserEmail(email);
+        
         navigate('/');
       }
     } catch (error) {
@@ -103,7 +98,8 @@ function App(): React.JSX.Element {
   const handleSignOut = () => {
     localStorage.removeItem('jwt');
     setLoggedIn(false);
-    setUserEmail('');
+    setCurrentUser(null); // Limpiamos el perfil por seguridad
+    setCards([]);         // Limpiamos las tarjetas de la memoria
     navigate('/signin');
   };
 
@@ -173,7 +169,7 @@ function App(): React.JSX.Element {
     }
   };
 
-  // Bloqueo de renderizado mientras se comprueba el token para evitar el parpadeo
+  // Bloqueo de renderizado mientras se comprueba el token
   if (isCheckingToken) {
     return (
       <div className="page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#fff' }}>
@@ -188,12 +184,11 @@ function App(): React.JSX.Element {
         <div className="page__content">
           <Header
             loggedIn={loggedIn}
-            userEmail={userEmail}
+            userEmail={currentUser?.email || ''} // Leemos el correo del objeto currentUser para no tener estados duplicados
             onSignOut={handleSignOut}
           />
 
           <Routes>
-            {/* Ruta Protegida: El núcleo de tu app */}
             <Route 
               path="/" 
               element={
@@ -210,7 +205,6 @@ function App(): React.JSX.Element {
               } 
             />
 
-            {/* Rutas Públicas */}
             <Route 
               path="/signin" 
               element={
@@ -225,7 +219,6 @@ function App(): React.JSX.Element {
               } 
             />
 
-            {/* Captura de rutas inexistentes */}
             <Route 
               path="*" 
               element={
