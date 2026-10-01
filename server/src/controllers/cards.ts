@@ -151,13 +151,16 @@ export const unlikeCard = async (req: Request, res: Response, next: NextFunction
       { new: true }
     );
 
-  if (!card) {
-    throw Object.assign(new Error("No se encontró ninguna tarjeta con ese id"), { statusCode: 404 });
+    if (updatedCard) {
+      res.send({
+        ...updatedCard.toObject(),
+        isLiked: updatedCard.likes.some((id) => id.toString() === userId),
+      });
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'CastError') {
+      return next(Object.assign(new Error('ID de tarjeta inválido'), { statusCode: 400 }));
+    }
+    next(error);
   }
-
-  const userId = req.user?._id;
-  res.send({
-    ...card.toObject(),
-    isLiked: card.likes.some((id) => id.toString() === userId),
-  });
 };
